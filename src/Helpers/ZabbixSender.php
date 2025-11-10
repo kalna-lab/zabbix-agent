@@ -2,6 +2,7 @@
 
 namespace KalnaLab\ZabbixAgent\Helpers;
 
+use Illuminate\Support\Facades\Log;
 class ZabbixSender
 {
     public static function send(string $host, string $key, string|int|float $value): bool
@@ -81,12 +82,14 @@ class ZabbixSender
         $fp = @fsockopen("$protocol://$server", $port, $errno, $errstr, 2);
 
         if (!$fp) {
+            Log::error(__METHOD__ . " failed to connect: $errno $errstr");
             return false;
         }
 
         stream_set_timeout($fp, 2);
         fwrite($fp, $packet);
         fclose($fp);
+        Log::info(__METHOD__ . " sent: $data to $server:$port via $protocol");
 
         return true;
     }
