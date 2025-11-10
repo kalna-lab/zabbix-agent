@@ -1,0 +1,21 @@
+{
+  "name": "kalna-lab/zabbix-agent",
+  "description": "Simple Laravel-friendly Zabbix metrics & event sender using curl",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "KalnaLab\\ZabbixAgent\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "KalnaLab\\ZabbixAgent\\ZabbixServiceProvider"
+      ]
+    }
+  },
+  "require": {
+    "php": ">=8.1"
+  }
+}
