@@ -5,6 +5,15 @@ php artisan vendor:publish --tag=config --provider="KalnaLab\\ZabbixAgent\\Zabbi
 ```
 
 ## Usage
+ENV variables
+```dotenv
+ZABBIX_SERVER=https://zabbix.example.com
+ZABBIX_PORT=10051
+ZABBIX_TOKEN=
+ZABBIX_HOST=laravel-app
+ZABBIX_PROTOCOL=tcp #Supported: http, tcp, udp
+```
+
 ```php
 use KalnaLab\ZabbixAgent\ZabbixAgent;
 
