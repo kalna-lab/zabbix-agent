@@ -88,8 +88,10 @@ class ZabbixSender
 
         stream_set_timeout($fp, 2);
         fwrite($fp, $packet);
+        $response = fread($fp, 1024);
         fclose($fp);
-        Log::info(__METHOD__ . " sent: $data to $server:$port via $protocol");
+        Log::debug(__METHOD__ . " sent: $data to $server:$port via $protocol");
+        Log::debug(__METHOD__ . " response: $response");
 
         return true;
     }
