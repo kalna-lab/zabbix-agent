@@ -45,7 +45,7 @@ Your Laravel app sends data using the **Zabbix trapper** mechanism (push mode).
 
 For each metric or event:
 
-1. Go to **Configuration → Hosts → laravel-app → Items → Create item**.
+1. Go to **Data collection → Hosts → _laravel-app_ → Items → Create item**.
 2. Fill in:
     - **Name:** e.g. `Active users`
     - **Type:** `Zabbix trapper`
@@ -68,7 +68,7 @@ Repeat for any other metrics:
 If you send **event counters** via `ZabbixAgent::event('app.login_event')`, Zabbix can calculate counts per hour or per
 day.
 
-1. Go to **Configuration → Hosts → laravel-app → Items → Create item**.
+1. Go to **Data collection → Hosts → _laravel-app_ → Items → Create item**.
 2. Choose:
     - **Type:** `Calculated`
     - **Key:** `app.logins_per_hour`
@@ -84,7 +84,7 @@ This creates an automatic time-based count of login events.
 
 To get alerts for application errors:
 
-1. Go to **Configuration → Hosts → laravel-app → Triggers → Create trigger**.
+1. Go to **Data collection → Hosts → _laravel-app_ → Triggers → Create trigger**.
 2. Fill in:
     - **Name:** `External API failure`
     - **Expression:**
@@ -98,7 +98,7 @@ To get alerts for application errors:
 
 ## 5. Create a Graph (optional)
 
-1. Go to **Configuration → Hosts → laravel-app → Graphs → Create graph**.
+1. Go to **Data collection → Hosts → _laravel-app_ → Graphs → Create graph**.
 2. Add items such as:
     - `app.active_users`
     - `app.logins_per_hour`
@@ -157,9 +157,9 @@ Then in Zabbix:
 
 ## 9. Troubleshooting Tips
 
-| Problem                 | Likely Cause                    | Solution                                          |
-|-------------------------|---------------------------------|---------------------------------------------------|
-| No data received        | Port blocked or wrong host name | Ensure host name matches ZABBIX_HOST              | 
-| “Authentication failed” | Wrong API token                 | Generate a new one in Administration → API tokens | 
-| Text metrics truncated  | Item type not set to Text       | Change Type of information to Text                | 
-| Graph shows flat line   | Event-based data not summed     | Use a Calculated item with sum()                  | 
+| Problem                 | Likely Cause                    | Solution                                         |
+|-------------------------|---------------------------------|--------------------------------------------------|
+| No data received        | Port blocked or wrong host name | Ensure host name matches ZABBIX_HOST             | 
+| “Authentication failed” | Wrong API token                 | Generate a new one in User settings → API tokens | 
+| Text metrics truncated  | Item type not set to Text       | Change Type of information to Text               | 
+| Graph shows flat line   | Event-based data not summed     | Use a Calculated item with sum()                 | 
