@@ -3,6 +3,14 @@
   "description": "Simple Laravel-friendly Zabbix metrics & event sender using curl",
   "type": "library",
   "license": "MIT",
+  "authors": [
+    {
+      "name": "KalnaIT",
+      "email": "info@kalna.it",
+      "homepage": "https://kalna.it",
+      "role": "Developer"
+    }
+  ],
   "autoload": {
     "psr-4": {
       "KalnaLab\\ZabbixAgent\\": "src/"
@@ -16,6 +24,7 @@
     }
   },
   "require": {
-    "php": ">=8.1"
+    "php": ">=8.3",
+    "illuminate/support": ">=v10.0.0"
   }
 }
