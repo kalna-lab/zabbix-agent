@@ -3,14 +3,20 @@
   "description": "Simple Laravel-friendly Zabbix metrics & event sender using curl",
   "type": "library",
   "license": "MIT",
+  "homepage": "https://github.com/kalna-lab/zabbix-agent",
   "authors": [
     {
-      "name": "KalnaIT",
-      "email": "info@kalna.it",
+      "name": "Claus Hjort Bube @ KalnaIT",
+      "email": "claus@kalna.it",
       "homepage": "https://kalna.it",
       "role": "Developer"
     }
   ],
+  "support": {
+    "issues": "https://github.com/kalna-lab/zabbix-agent/issues",
+    "source": "https://github.com/kalna-lab/zabbix-agent",
+    "docs": "https://github.com/kalna-lab/zabbix-agent#readme"
+  },
   "autoload": {
     "psr-4": {
       "KalnaLab\\ZabbixAgent\\": "src/"
