@@ -10,7 +10,7 @@ class ZabbixSender
         $protocol = config('zabbix.protocol', 'tcp');
 
         return match ($protocol) {
-            'http' => self::sendHttp($host, $key, $value),
+//            'http' => self::sendHttp($host, $key, $value),
             'tcp', 'udp' => self::sendSocket($host, $key, $value),
             default => throw new \InvalidArgumentException("Unsupported Zabbix protocol: {$protocol}"),
         };
@@ -60,39 +60,50 @@ class ZabbixSender
     protected static function sendSocket(string $host, string $key, string|int|float $value): bool
     {
         $server = config('zabbix.server');
-        $port = config('zabbix.port');
+        $port = (int)config('zabbix.port');
         $protocol = config('zabbix.protocol', 'tcp');
+        // Brug Unix timestamp til clock
+        $clock = time();
 
         $data = json_encode([
             'request' => 'sender data',
             'data' => [
                 [
-                    'host' => $host,
-                    'key' => $key,
+                    'host'  => $host,
+                    'key'   => $key,
                     'value' => (string)$value,
-                    'clock' => time(),
+                    'clock' => $clock,
                 ],
             ],
         ], JSON_THROW_ON_ERROR);
 
-        $header = pack('a4V', 'ZBXD', strlen($data)) . "\x01";
+        $payloadLength = pack('P', strlen($data)); // 64-bit little-endian
+        $header = "ZBXD" . "\x01" . $payloadLength;
         $packet = $header . $data;
 
         $errno = $errstr = null;
-        $fp = @fsockopen("$protocol://$server", $port, $errno, $errstr, 2);
-
+        $fp = @fsockopen("$protocol://$server", $port, $errno, $errstr, 5); // 5s timeout
         if (!$fp) {
-            Log::error(__METHOD__ . " failed to connect: $errno $errstr");
+            Log::error(__METHOD__ . " failed to connect to $server:$port: $errno $errstr");
             return false;
         }
 
-        stream_set_timeout($fp, 2);
-        fwrite($fp, $packet);
+        stream_set_timeout($fp, 5);
+
+        // Send pakken
+        fwrite($fp, $packet, strlen($packet));
+        fflush($fp);
+
+        // Læs Zabbix-serverens svar (JSON)
         $response = fread($fp, 1024);
         fclose($fp);
-        Log::debug(__METHOD__ . " sent: $data to $server:$port via $protocol");
-        Log::debug(__METHOD__ . " response: $response");
 
-        return true;
+        // Parse response
+        if (!empty($response) && str_contains($response, 'failed: 0')) {
+            return true; // Zabbix accepterede pakken
+        }
+
+        Log::warning(__METHOD__ . " Zabbix did not accept data: $response");
+        return false;
     }
 }
