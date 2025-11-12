@@ -103,7 +103,7 @@ class ZabbixSender
             return true; // Zabbix accepterede pakken
         }
 
-        Log::warning(__METHOD__ . " Zabbix did not accept data: $response");
+        Log::warning(__METHOD__ . " Zabbix did not accept the data ($key: $value): $response");
         return false;
     }
 }
