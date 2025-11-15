@@ -7,6 +7,7 @@ class ZabbixSender
 {
     public static function send(string $host, string $key, string|int|float $value): bool
     {
+        $host ??= config('zabbix.host');
         $protocol = config('zabbix.protocol', 'tcp');
 
         return match ($protocol) {
@@ -62,6 +63,11 @@ class ZabbixSender
         $server = config('zabbix.server');
         $port = (int)config('zabbix.port');
         $protocol = config('zabbix.protocol', 'tcp');
+
+        if (!$server) {
+            return false;
+        }
+
         // Brug Unix timestamp til clock
         $clock = time();
 

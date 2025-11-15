@@ -11,7 +11,6 @@ class ZabbixAgent
      */
     public static function metric(string $key, float|int|string $value, ?string $host = null): bool
     {
-        $host ??= config('zabbix.host');
         return ZabbixSender::send($host, $key, $value);
     }
 
@@ -20,7 +19,6 @@ class ZabbixAgent
      */
     public static function event(string $key, ?string $host = null): bool
     {
-        $host ??= config('zabbix.host');
         return ZabbixSender::send($host, $key, 1);
     }
 
@@ -29,7 +27,6 @@ class ZabbixAgent
      */
     public static function error(string $key, string $message, ?string $host = null): bool
     {
-        $host ??= config('zabbix.host');
         return ZabbixSender::send($host, $key, $message);
     }
 }
