@@ -72,7 +72,7 @@ day.
 2. Choose:
     - **Type:** `Calculated`
     - **Key:** `app.logins_per_hour`
-    - **Formula:** `sum(app.login_event,1h)`
+    - **Formula:** `sum(/host/app.login_event,1h)`
     - **Type of information:** `Numeric (unsigned)`
 3. Save.
 
