@@ -5,6 +5,7 @@ return [
     | Zabbix server connection
     |--------------------------------------------------------------------------
     */
+    'enabled' => env('ZABBIX_ENABLED', true),
     'server' => env('ZABBIX_SERVER'),
     'port' => env('ZABBIX_PORT', 10051),
 

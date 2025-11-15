@@ -7,6 +7,10 @@ class ZabbixSender
 {
     public static function send(string $host, string $key, string|int|float $value): bool
     {
+        if (!config('zabbix.enabled')) {
+            return false;
+        }
+
         $host ??= config('zabbix.host');
         $protocol = config('zabbix.protocol', 'tcp');
 
