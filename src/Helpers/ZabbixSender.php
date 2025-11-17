@@ -11,7 +11,6 @@ class ZabbixSender
             return false;
         }
 
-        $host ??= config('zabbix.host');
         $protocol = config('zabbix.protocol', 'tcp');
 
         return match ($protocol) {
