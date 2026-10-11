@@ -5,12 +5,25 @@ namespace KalnaLab\ZabbixAgent\Helpers;
 use Illuminate\Support\Facades\Log;
 class ZabbixSender
 {
-    public static function send(string $host, string $key, string|int|float $value): bool
+    public static function send(?string $host, string $key, string|int|float $value): bool
     {
-        if (!config('zabbix.enabled')) {
+        // Telemetry must never break the calling flow — callers often report
+        // from inside their own error handling. An unconfigured host is
+        // therefore a silent no-op, and any failure is logged, not thrown.
+        if (!config('zabbix.enabled') || !$host) {
             return false;
         }
 
+        try {
+            return self::dispatch($host, $key, $value);
+        } catch (\Throwable $e) {
+            Log::warning(__METHOD__ . " failed to send {$key}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    protected static function dispatch(string $host, string $key, string|int|float $value): bool
+    {
         // When the Zabbix host requires PSK, delegate to the zabbix_sender
         // binary — PHP sockets cannot negotiate TLS-PSK. Opt-in only.
         if (config('zabbix.tls.connect') === 'psk') {
