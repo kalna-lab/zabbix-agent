@@ -11,6 +11,12 @@ class ZabbixSender
             return false;
         }
 
+        // When the Zabbix host requires PSK, delegate to the zabbix_sender
+        // binary — PHP sockets cannot negotiate TLS-PSK. Opt-in only.
+        if (config('zabbix.tls.connect') === 'psk') {
+            return self::sendViaBinary($host, $key, $value);
+        }
+
         $protocol = config('zabbix.protocol', 'tcp');
 
         return match ($protocol) {
@@ -18,6 +24,68 @@ class ZabbixSender
             'tcp', 'udp' => self::sendSocket($host, $key, $value),
             default => throw new \InvalidArgumentException("Unsupported Zabbix protocol: {$protocol}"),
         };
+    }
+
+    /**
+     * Send PSK-encrypted data by shelling out to the external zabbix_sender
+     * binary. This is the only reliable way to speak TLS-PSK from PHP. The
+     * binary is therefore an optional, deployment-time dependency: when it is
+     * absent (or PSK is misconfigured) the send fails gracefully and is logged
+     * rather than throwing, so telemetry never breaks the calling flow.
+     */
+    protected static function sendViaBinary(string $host, string $key, string|int|float $value): bool
+    {
+        $server = config('zabbix.server');
+        if (!$server) {
+            return false;
+        }
+
+        $identity = config('zabbix.tls.psk_identity');
+        $pskFile = config('zabbix.tls.psk_file');
+        if (!$identity || !$pskFile) {
+            Log::warning(__METHOD__ . ': PSK selected but tls.psk_identity / tls.psk_file is not configured.');
+            return false;
+        }
+
+        $bin = config('zabbix.sender_bin', 'zabbix_sender');
+
+        // Array form runs the program directly without a shell, so arguments
+        // need no escaping and cannot be injected.
+        $command = [
+            $bin,
+            '-z', (string)$server,
+            '-p', (string)config('zabbix.port', 10051),
+            '-s', $host,
+            '--tls-connect', 'psk',
+            '--tls-psk-identity', $identity,
+            '--tls-psk-file', $pskFile,
+            '-k', $key,
+            '-o', (string)$value,
+        ];
+
+        $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        $process = @proc_open($command, $descriptors, $pipes);
+
+        if (!is_resource($process)) {
+            Log::warning(__METHOD__ . ": unable to run '{$bin}'. PSK delivery requires the zabbix_sender binary to be installed.");
+            return false;
+        }
+
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        foreach ($pipes as $pipe) {
+            if (is_resource($pipe)) {
+                fclose($pipe);
+            }
+        }
+        $exitCode = proc_close($process);
+
+        if ($exitCode === 0 && str_contains($stdout, 'failed: 0')) {
+            return true;
+        }
+
+        Log::warning(__METHOD__ . " Zabbix did not accept the data ($key: $value): exit={$exitCode} stdout=" . trim($stdout) . ' stderr=' . trim($stderr));
+        return false;
     }
 
     /**
