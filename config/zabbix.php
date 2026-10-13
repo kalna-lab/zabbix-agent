@@ -21,9 +21,16 @@ return [
     |--------------------------------------------------------------------------
     | Protocol
     |--------------------------------------------------------------------------
-    | Supported: 'http', 'tcp', 'udp'
+    | Supported: 'tcp', 'udp' (native trapper on port 10051) and 'http'.
+    |
+    | 'http' pushes values through the Zabbix API method history.push
+    | (Zabbix 7.0+) over HTTPS. Set 'server' to the frontend URL, e.g.
+    | https://zabbix.example.com, and 'token' to an API token.
     */
-    'protocol' => env('ZABBIX_PROTOCOL', 'tcp'), //
+    'protocol' => env('ZABBIX_PROTOCOL', 'tcp'),
+
+    // Request timeout in seconds for the 'http' protocol.
+    'timeout' => env('ZABBIX_TIMEOUT', 5),
 
     /*
     |--------------------------------------------------------------------------

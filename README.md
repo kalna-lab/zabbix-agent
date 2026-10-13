@@ -110,15 +110,32 @@ To get alerts for application errors:
 
 In your Laravel config (`config/zabbix.php`):
 
-| Protocol       | Description                   | Port          | Notes                                              |
-|----------------|-------------------------------|---------------|----------------------------------------------------|
-| `tcp` or `udp` | Native Zabbix Sender protocol | `10051`       | Binary payload, fast, requires port open           |
-| `http`         | Zabbix API / HTTP trapper     | `80` or `443` | Works through firewalls, uses `curl` and API token |
+| Protocol       | Description                                     | Port   | Notes                                                                 |
+|----------------|-------------------------------------------------|--------|-----------------------------------------------------------------------|
+| `tcp` or `udp` | Native Zabbix sender protocol                   | 10051  | Plaintext unless PSK is enabled (requires the `zabbix_sender` binary) |
+| `http`         | Zabbix API method `history.push` (Zabbix 7.0+)  | 443    | Encrypted by HTTPS, no binary, works on containers/PaaS and through firewalls |
 
-If using `http`:
+### Setting up `http` (history.push)
 
-- Set `ZABBIX_SERVER=https://your-zabbix.example.com`
-- Set `ZABBIX_TOKEN=<API token>` (create under **Administration → API tokens**)
+1. **API token.** Create a dedicated API user, e.g. `api-myapp`, and give it the least access it needs:
+    - A user group with **Read-write** permission on the host group containing *only* this application's host.
+    - A user role that allows the API method `history.push` (you can deny all other methods).
+    - Create the token under **Users → API tokens**, ideally with an expiry date.
+2. **Allowed hosts on every trapper item.** `history.push` is executed by the Zabbix *frontend*, which
+   forwards the value to the server. The frontend's IP (often `127.0.0.1` when frontend and server share a
+   machine) must therefore be listed in **Allowed hosts** on each trapper item — not the IP of your application.
+   Leave the field empty to allow any source.
+3. **Configure the app:**
+   ```dotenv
+   ZABBIX_PROTOCOL=http
+   ZABBIX_SERVER=https://zabbix.example.com   # frontend URL, /api_jsonrpc.php is appended
+   ZABBIX_TOKEN=<API token>
+   ZABBIX_HOST=myapp                          # technical host name in Zabbix
+   ZABBIX_TIMEOUT=5
+   ```
+
+Zabbix replies `"response": "success"` even when an individual value is rejected (unknown item, disabled item,
+missing permissions). The package checks the per-item result and returns `false` with a logged warning in that case.
 
 ---
 
@@ -130,7 +147,7 @@ ZABBIX_SERVER=https://zabbix.example.com
 ZABBIX_PORT=10051
 ZABBIX_TOKEN=
 ZABBIX_HOST=laravel-app
-ZABBIX_PROTOCOL=tcp #Supported: http, tcp, udp
+ZABBIX_PROTOCOL=tcp # Supported: http (Zabbix 7.0+), tcp, udp
 ```
 
 ---
@@ -160,6 +177,8 @@ Then in Zabbix:
 | Problem                 | Likely Cause                    | Solution                                         |
 |-------------------------|---------------------------------|--------------------------------------------------|
 | No data received        | Port blocked or wrong host name | Ensure host name matches ZABBIX_HOST             | 
-| “Authentication failed” | Wrong API token                 | Generate a new one in User settings → API tokens | 
+| “Authentication failed” / “Not authorized.” | Wrong or expired API token | Generate a new one in Users → API tokens | 
+| “No permissions to referred object or it does not exist.” | Wrong host/key, or API user lacks Read-write on the host | Check host name, item key and user group permissions | 
+| http: value rejected although token is valid | Frontend IP not in the item's *Allowed hosts* | Add the frontend IP (often 127.0.0.1) | 
 | Text metrics truncated  | Item type not set to Text       | Change Type of information to Text               | 
 | Graph shows flat line   | Event-based data not summed     | Use a Calculated item with sum()                 | 

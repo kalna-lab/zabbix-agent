@@ -2,7 +2,9 @@
 
 namespace KalnaLab\ZabbixAgent\Helpers;
 
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+
 class ZabbixSender
 {
     public static function send(?string $host, string $key, string|int|float $value): bool
@@ -24,16 +26,20 @@ class ZabbixSender
 
     protected static function dispatch(string $host, string $key, string|int|float $value): bool
     {
+        $protocol = config('zabbix.protocol', 'tcp');
+
+        // HTTPS push through the Zabbix API is encrypted by TLS itself, so PSK does not apply.
+        if ($protocol === 'http') {
+            return self::sendHttp($host, $key, $value);
+        }
+
         // When the Zabbix host requires PSK, delegate to the zabbix_sender
         // binary — PHP sockets cannot negotiate TLS-PSK. Opt-in only.
         if (config('zabbix.tls.connect') === 'psk') {
             return self::sendViaBinary($host, $key, $value);
         }
 
-        $protocol = config('zabbix.protocol', 'tcp');
-
         return match ($protocol) {
-//            'http' => self::sendHttp($host, $key, $value),
             'tcp', 'udp' => self::sendSocket($host, $key, $value),
             default => throw new \InvalidArgumentException("Unsupported Zabbix protocol: {$protocol}"),
         };
@@ -102,41 +108,53 @@ class ZabbixSender
     }
 
     /**
-     * Send via HTTP to Zabbix API (using curl)
+     * Push a trapper value through the Zabbix API method history.push (Zabbix 7.0+).
+     *
+     * Encrypted by HTTPS and needs no extra binary or open port 10051, so it also works
+     * on managed platforms (containers, App Service) where zabbix_sender cannot be installed.
+     *
+     * Zabbix answers "response": "success" even when the value is rejected, so the
+     * per-item result in data[0] decides the outcome.
      */
     protected static function sendHttp(string $host, string $key, string|int|float $value): bool
     {
-        $url = rtrim(config('zabbix.server'), '/');
+        $server = config('zabbix.server');
         $token = config('zabbix.token');
 
-        $payload = [
-            'jsonrpc' => '2.0',
-            'method' => 'item.create', // or custom API endpoint if using a trapper receiver
-            'params' => [
-                [
+        if (!$server || !$token) {
+            Log::warning(__METHOD__ . ': http protocol selected but zabbix.server / zabbix.token is not configured.');
+            return false;
+        }
+
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->timeout((int)config('zabbix.timeout', 5))
+            ->post(rtrim($server, '/') . '/api_jsonrpc.php', [
+                'jsonrpc' => '2.0',
+                'method' => 'history.push',
+                'params' => [[
                     'host' => $host,
-                    'key_' => $key,
+                    'key' => $key,
                     'value' => (string)$value,
-                ],
-            ],
-            'auth' => $token,
-            'id' => 1,
-        ];
+                    'clock' => time(),
+                ]],
+                'id' => 1,
+            ]);
 
-        $ch = curl_init("{$url}/api_jsonrpc.php");
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json-rpc'],
-            CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_TIMEOUT => 3,
-        ]);
+        $body = (array)$response->json();
+        $item = $body['result']['data'][0] ?? null;
 
-        $response = curl_exec($ch);
-        $error = curl_error($ch);
-        curl_close($ch);
+        if ($response->successful() && is_array($item) && isset($item['itemid']) && !isset($item['error'])) {
+            return true;
+        }
 
-        return $response && !$error;
+        $reason = $item['error']
+            ?? $body['error']['data']
+            ?? $body['error']['message']
+            ?? "HTTP {$response->status()}";
+
+        Log::warning(__METHOD__ . " Zabbix did not accept the data ($key: $value): " . $reason);
+        return false;
     }
 
     /**

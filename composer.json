@@ -31,6 +31,24 @@
   },
   "require": {
     "php": ">=8.1",
-    "illuminate/support": ">=v10.0.0"
+    "illuminate/support": ">=v10.0.0",
+    "illuminate/http": ">=v10.0.0"
+  },
+  "require-dev": {
+    "pestphp/pest": "^3.0",
+    "orchestra/testbench": "^10.0"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "KalnaLab\\ZabbixAgent\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "vendor/bin/pest"
   }
 }
